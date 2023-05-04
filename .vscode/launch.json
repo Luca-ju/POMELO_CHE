@@ -1,0 +1,105 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "TZA superpixel_disagg_model.py 1",
+            "type": "python",
+            "request": "launch",
+            "program": "superpixel_disagg_model.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}",
+                "PYDEVD_WARN_EVALUATION_TIMEOUT": "500"
+            },
+            "args": [
+                "-train",
+                "tza",
+                "-train_lvl",
+                "f",
+                "-test",
+                "tza",
+                "-optim",
+                "adam",
+                "-wr",
+                "0.01",
+                "-adamwr",
+                "0.",
+                "-lstep",
+                "800",
+                "-mm",
+                "m",
+                "--validation_fold",
+                "0",
+                "--dropout",
+                "0.4",
+                "-rs",
+                "42",
+                "--loss",
+                "LogL1",
+                "--dataset_dir",
+                "datasets3",
+                "--sampler",
+                "custom",
+                "--max_step",
+                "150000",
+                "--name",
+                "TZA_fine_vfold0_03.05.23"
+            ]
+        },
+        {
+            "name": "CHE superpixel_disagg_model_copy.py 1",
+            "type": "python",
+            "request": "launch",
+            "program": "superpixel_disagg_model_copy.py",
+            "console": "integratedTerminal",
+            "env": {
+                "PYTHONPATH": "${workspaceRoot}",
+                "PYDEVD_WARN_EVALUATION_TIMEOUT": "500"
+            },
+            "args": [
+                "-train",
+                "che",
+                "-train_lvl",
+                "c",
+                "-test",
+                "che",
+                "-optim",
+                "adam",
+                "-wr",
+                // "0.15",
+                "0.0",
+                "-adamwr",
+                "0.0",
+                "-lstep",
+                "800",
+                "-mm",
+                "m",
+                "--validation_fold",
+                "0",
+                "--dropout",
+                "0.0",
+                "-rs",
+                "42",
+                "-lr",
+                //"0.00001" default
+                "0.00003", // guter wert vorerst
+                "--loss",
+                "LogL1",
+                "--dataset_dir",
+                "datasets3",
+                "--sampler",
+                "custom",
+                "--max_step",
+                "1500000",
+                //"-is", // input scaling is jetzt true
+                //"True",
+                //"--kernel_size", "3,3,3,3",
+                "--name",
+                "CHE_coarse_vfold_04.5.23"
+            ]
+        }
+    ]
+}

@@ -1,0 +1,22 @@
+HACenv/
+# .vscode/
+output_dir/
+__pycache__/
+wandb/
+data/
+checkpoints/
+outputs/
+datasets/
+datasets2/
+datasets3/
+.gitcopy/
+.gitcopy2/
+__pycache__/
+euler_job_submission/
+euleroutputs/
+wpop/
+sHACenv4/
+cy_utils/__pycache__/
+*.pyc
+datasettop5
+POMELOenv
