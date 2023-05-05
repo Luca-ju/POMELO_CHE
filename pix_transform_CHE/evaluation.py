@@ -152,6 +152,7 @@ def eval_my_model(mynet, guide_img, valid_mask, validation_regions,
             )
             if return_scale:
                 predicted_target_img, scales = return_vals
+                # hier geotiff speicher, scales = occrate
                 res["scales"] = scales.squeeze()
             else:
                 predicted_target_img = return_vals

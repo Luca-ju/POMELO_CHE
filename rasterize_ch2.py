@@ -53,7 +53,7 @@ def rasterize_csv(csv_filename, source_popNN_file, source_popBi_file, template_f
 
         # read swiss census data
         df = pd.read_csv(csv_filename, sep=';')
-        #df = pd.read_csv(csv_filename)[["E_KOORD", "N_KOORD", "B21BTOT"]]
+        #df = pd.read_csv(csv_filename)[["E_KOORD", "N_KOORD", "B20BTOT"]]
 
         E_min = df["E_KOORD"].min()
         N_min = df["N_KOORD"].max()-1
@@ -65,7 +65,7 @@ def rasterize_csv(csv_filename, source_popNN_file, source_popBi_file, template_f
         df["N_IMG"] = -(df["N_KOORD"] - N_min) // cy
 
         # convert to raster
-        pop_raster[df["N_IMG"].tolist(), df["E_IMG"].to_list()] = df["B21BTOT"]
+        pop_raster[df["N_IMG"].tolist(), df["E_IMG"].to_list()] = df["B20BTOT"]
         # plot_2dmatrix(pop_raster, vmax=50)
 
         meta = {"driver": "GTiff", "count": 1, "dtype": "float32", "width":w, "height":h, "crs": CRS.from_epsg(2056),
@@ -175,13 +175,13 @@ def rasterize_csv(csv_filename, source_popNN_file, source_popBi_file, template_f
 def process():
     # inputs
     source_folder = "/scratch3/ldominiak/luca_pomelo_input_data/CHE/CHE_Census_Data/" # hani
-    source_filename = "STATPOP2021.csv" # hani
+    source_filename = "STATPOP2020.csv" # hani
     template_file = "/scratch3/ldominiak/luca_pomelo_input_data/CHE/CHE_Covariates/che_tt50k_100m_2000.tif" # hani
 
     # ouputs in the source_folder
-    source_meta_poprasterNN = "PopRasterNN2.tif"
-    source_meta_poprasterBi = "PopRasterBi2.tif"
-    output_file = "CHE_fine_Census_Data_rasterized.tif"
+    source_meta_poprasterNN = "PopRasterNN2_2020.tif"
+    source_meta_poprasterBi = "PopRasterBi_2020.tif"
+    output_file = "CHE_fine_Census_Data_rasterized_2020.tif"
 
     source_file = join(source_folder, source_filename)
     source_popNN_file = join(source_folder, source_meta_poprasterNN)
