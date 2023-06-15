@@ -17,20 +17,21 @@ for dir in root_paths:
 input_paths = {
     #### Changes from here
     "che": {
-        "buildings_merged": f"{root_path}CHE/CHE_Covariates/che_merged_CHE_buildings_final_new.tif", # hani erstellt
-        "che_tt50k_100m_2000": f"{root_path}CHE/CHE_Covariates/che_tt50k_100m_2000.tif", # hani für CH
-        "che_dst_bsgme_100m_2015": f"{root_path}CHE/CHE_Covariates/che_dst_bsgme_100m_2015.tif", # hani für CH
-        "che_dst_ghslesaccilcgufghsll_100m_2014": f"{root_path}CHE/CHE_Covariates/che_ghslesaccilcgufghsl_100m_2014.tif", # hani für CH
-        "che_dst_coastline_100m_2000_2020": f"{root_path}CHE/CHE_Covariates/che_dst_coastline_100m_2000_2020.tif", # hani für CH
-        "che_dmsp_100m_2011": f"{root_path}CHE/CHE_Covariates/che_dmsp_100m_2011.tif", # hani für CH
-        "che_esaccilc_dst_water_100m_2000_2012": f"{root_path}CHE/CHE_Covariates/che_esaccilc_dst_water_100m_2000_2012.tif", # hani für CH
-        "che_osm_dst_roadintersec_100m_2016": f"{root_path}CHE/CHE_Covariates/che_osm_dst_roadintersec_100m_2016.tif", # hani für CH
-        "che_osm_dst_waterway_100m_2016": f"{root_path}CHE/CHE_Covariates/che_osm_dst_waterway_100m_2016.tif", # hani für CH
-        "che_osm_dst_road_100m_2016": f"{root_path}CHE/CHE_Covariates/che_osm_dst_road_100m_2016.tif", # hani für CH
-        "che_srtm_slope_100m": f"{root_path}CHE/CHE_Covariates/che_srtm_slope_100m.tif", # hani für CH
-        "che_srtm_topo_100m": f"{root_path}CHE/CHE_Covariates/che_srtm_topo_100m.tif", # hani für CH
-        "che_viirs_100m_2015": f"{root_path}CHE/CHE_Covariates/che_viirs_100m_2015.tif", #  hani für CH
-        "che_wdpa_dst_cat1_100m_2015": f"{root_path}CHE/CHE_Covariates/che_wdpa_dst_cat1_100m_2015.tif" # hani für CH
+        "buildings_count_2020_TLM": f"{root_path}CHE/CHE_Covariates/CHE_Buildings_2020_preprocessed.tif",
+        "buildings_count_2020_OSM": f"{root_path}CHE/CHE_Covariates/CHE_Buildings_2020_preprocessed_OSM.tif",
+        "che_tt50k_100m_2000": f"{root_path}CHE/CHE_Covariates/che_tt50k_100m_2000.tif", 
+        "che_dst_bsgme_100m_2015": f"{root_path}CHE/CHE_Covariates/che_dst_bsgme_100m_2015.tif", 
+        "che_dst_ghslesaccilcgufghsll_100m_2014": f"{root_path}CHE/CHE_Covariates/che_dst_ghslesaccilcgufghsll_100m_2014.tif", 
+        "che_dst_coastline_100m_2000_2020": f"{root_path}CHE/CHE_Covariates/che_dst_coastline_100m_2000_2020.tif", 
+        "che_dmsp_100m_2011": f"{root_path}CHE/CHE_Covariates/che_dmsp_100m_2011.tif", 
+        "che_esaccilc_dst_water_100m_2000_2012": f"{root_path}CHE/CHE_Covariates/che_esaccilc_dst_water_100m_2000_2012.tif", 
+        "che_osm_dst_roadintersec_100m_2016": f"{root_path}CHE/CHE_Covariates/che_osm_dst_roadintersec_100m_2016.tif", 
+        "che_osm_dst_waterway_100m_2016": f"{root_path}CHE/CHE_Covariates/che_osm_dst_waterway_100m_2016.tif", 
+        "che_osm_dst_road_100m_2016": f"{root_path}CHE/CHE_Covariates/che_osm_dst_road_100m_2016.tif", 
+        "che_srtm_slope_100m": f"{root_path}CHE/CHE_Covariates/che_srtm_slope_100m.tif",  
+        "che_srtm_topo_100m": f"{root_path}CHE/CHE_Covariates/che_srtm_topo_100m.tif", 
+        "che_viirs_100m_2015": f"{root_path}CHE/CHE_Covariates/che_viirs_100m_2015.tif", 
+        "che_wdpa_dst_cat1_100m_2015": f"{root_path}CHE/CHE_Covariates/che_wdpa_dst_cat1_100m_2015.tif"
     },
     #### To here
     "tza": {
@@ -153,28 +154,32 @@ input_paths = {
 no_data_values = {
     #### Neuer Teil
     "che": {
-        "buildings_merged": -99999,
-        "esaccilc_dst011_100m_2000": -99999,
-        "esaccilc_dst040_100m_2000": -99999,
-        "esaccilc_dst130_100m_2000": -99999,
-        "esaccilc_dst140_100m_2000": -99999,
-        "esaccilc_dst150_100m_2000": -99999,
-        "esaccilc_dst160_100m_2000": -99999,
-        "esaccilc_dst190_100m_2000": -99999,
-        "esaccilc_dst200_100m_2000": -99999,
-        "che_tt50k_100m_2000": -99999,
-        "che_dst_bsgme_100m_2015": -99999,
-        "che_dst_ghslesaccilcgufghsll_100m_2014": -99999,
-        "che_dst_coastline_100m_2000_2020": -99999,
+        #"buildings_merged": -99999.0,
+        #"buildings_osm": -99999.0,
+        "buildings_count_2020_TLM": -99999.0,
+        "buildings_count_2020_OSM": -99999.0,
+        "buildings_count_2020_TLM_dissolved":-99999.0,
+        "esaccilc_dst011_100m_2000": -99999.,
+        "esaccilc_dst040_100m_2000": -99999.,
+        "esaccilc_dst130_100m_2000": -99999.,
+        "esaccilc_dst140_100m_2000": -99999.,
+        "esaccilc_dst150_100m_2000": -99999.,
+        "esaccilc_dst160_100m_2000": -99999.,
+        "esaccilc_dst190_100m_2000": -99999.,
+        "esaccilc_dst200_100m_2000": -99999.,
+        "che_tt50k_100m_2000": -99999.,
+        "che_dst_bsgme_100m_2015": -99999.,
+        "che_dst_ghslesaccilcgufghsll_100m_2014": -99999.,
+        "che_dst_coastline_100m_2000_2020": -99999.,
         "che_dmsp_100m_2011": 32767.,
-        "che_esaccilc_dst_water_100m_2000_2012":-99999, 
-        "che_osm_dst_roadintersec_100m_2016":-99999, 
-        "che_osm_dst_waterway_100m_2016": -99999,
-        "che_osm_dst_road_100m_2016": -99999,
-        "che_srtm_slope_100m": 255,
+        "che_esaccilc_dst_water_100m_2000_2012":-99999., 
+        "che_osm_dst_roadintersec_100m_2016":-99999., 
+        "che_osm_dst_waterway_100m_2016": -99999.,
+        "che_osm_dst_road_100m_2016": -99999.,
+        "che_srtm_slope_100m": 255.,
         "che_srtm_topo_100m": 32767.,
-        "che_viirs_100m_2015": 3.4028e+38,
-        "che_wdpa_dst_cat1_100m_2015": -99999,
+        "che_viirs_100m_2015": 3.4028234663852886e+38,
+        "che_wdpa_dst_cat1_100m_2015": -99999.,
     },
     #### Bis hier
     "tza": {
@@ -356,7 +361,11 @@ no_data_values = {
 norms = {
     #### Neuer Teil
     "che": {
-        "buildings_merged": (0.00089380914, 8.41622997e-03),
+        #"buildings_merged": (0.00089380914, 8.41622997e-03),
+        #"buildings_osm": (0.00089380914, 8.41622997e-03),
+        "buildings_count_2020_TLM": (0.00089380914, 8.41622997e-03),
+        "buildings_count_2020_OSM": (0.00089380914, 8.41622997e-03),
+        "buildings_count_2020_TLM_dissolved":(0.00089380914, 8.41622997e-03),
         "esaccilc_dst011_100m_2000": (2.81727052, 5.69885715e+00),
         "esaccilc_dst040_100m_2000": (0.44520899, 2.72345595e+00),
         "esaccilc_dst130_100m_2000": (3.09648584, 4.70480562e+00),
@@ -536,14 +545,11 @@ norms = {
 metadata = {
     #### Neuer Teil
     "che": {
-        "wp_no_data": [0, 8888.0],
-        "wp_covariates_no_data": -9999,
+        "wp_no_data": [0, 1, 8888.0], 
+        "wp_covariates_no_data": -99999.0, 
         "hd_no_data": [0],
-        "scale_maxar_to_google": None,
-        ###"preproc_data_path": f'{root_path}TZA/preprocessed_census_data_tza.pkl',
-        "rst_wp_regions_path": f'{root_path}CHE/CHE_admin_regions/che_coarse_subnational_admin.tif'
+        "rst_wp_regions_path": f'{root_path}CHE/CHE_Census_Data/che_subnational_admin_2000_2020.tif'
     },
-    #### Bis hier
     "tza": {
         "wp_no_data": [0, 1],
         "wp_covariates_no_data": -9999,

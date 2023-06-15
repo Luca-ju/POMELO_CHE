@@ -6,7 +6,7 @@ from rasterio.features import geometry_mask
 from osgeo import ogr
 from osgeo import gdal
 import numpy as np
-from utils import plot_2dmatrix, create_map_of_valid_ids
+from utils_copy_Luca import plot_2dmatrix, create_map_of_valid_ids
 import config_pop as cfg
 
 path1 = "/scratch3/ldominiak/luca_pomelo_input_data/CHE/CHE_Census_Data/che_population_2000_2020.csv"
@@ -27,8 +27,6 @@ for i in range(len(data)):
         cr_census_arr_new.append(data["P_2020"][i])
     else:
         pass
-    #valid_ids_new.append(np.where((data["GID"][i] == indexex_overview))[0][0])
-    #no_valid_ids.append()
 
 cr_census_arr_new = np.asarray(cr_census_arr_new, dtype = 'float32')
 
@@ -49,7 +47,6 @@ fine_regions = gdal.Open(CHE_raster_path).ReadAsArray().astype(np.uint32)
 unique_list = list(np.unique(fine_regions)) ### mache liste aus validen ids
 unique_list = unique_list[2:]### die ersten beiden braucht man nicht
 unique_list.insert(0,0) 
-#print(unique_list)
 
 h = fine_regions.shape[0]
 w = fine_regions.shape[1]

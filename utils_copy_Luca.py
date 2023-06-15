@@ -469,38 +469,16 @@ class MultiPatchDataset(torch.utils.data.Dataset):
             
             # get map of valid ids
             rst_wp_regions_path = cfg.metadata[name]["rst_wp_regions_path"]
-            #preproc_data_path = cfg.metadata[name]["preproc_data_path"]
-            #fine_regions = gdal.Open(rst_wp_regions_path).ReadAsArray().astype(np.uint32)
-            """
-            with open(preproc_data_path, 'rb') as handle:
-                pdata = pickle.load(handle)
-                """
+            
             no_valid_ids = cfg.metadata[name]["wp_no_data"]
-            #map_valid_ids = create_map_of_valid_ids(fine_regions, no_valid_ids)
+    
             map_valid_ids = map_valid_ids_new
-            """
-            with open(rs['train_vars_f'], "rb") as f:
-                _, _, _, tY_f, tregid_f, tMasks_f, tregMasks_f, tBBox_f, _ = pickle.load(f)
-            """
             
             with open(rs['train_vars_c'], "rb") as f:
                 _, _, _, tY_c, tregid_c, tMasks_c, tregMasks_c, tBBox_c, feature_names = pickle.load(f)
 
             self.feature_names[name] = feature_names
             # print("After loading trainvars",process.memory_info().rss/1000/1000,"mb used")
-            
-            """
-            if name not in self.val_valid_ids.keys():          
-                with open(rs['eval_vars'], "rb") as f:
-                
-                    self.memory_vars[name] = pickle.load(f)
-                    self.val_valid_ids[name] = self.memory_vars[name][4]
-            
-            # print("After loading of eval memory vars",process.memory_info().rss/1000/1000,"mb used")
-            
-            with open(rs['disag'], "rb") as f:
-                self.memory_disag[name] = pickle.load(f) 
-            """
         
 
             # print("After loading of disag memory",process.memory_info().rss/1000/1000,"mb used")
@@ -605,27 +583,6 @@ class MultiPatchDataset(torch.utils.data.Dataset):
             tregid_val_c = tregid_c[choice_val_c]
             tregid_hout_c = tregid_c[choice_hout_c]
 
-            # Prepare validation variables
-            # If we took the coarse level as training, we need to translate the ind_val to the fine level and get the fine level patches for validation!
-            #choice_val_f = np.where(np.in1d(self.memory_disag[name][0],tregid_val_c)[self.val_valid_ids[name]])[0] 
-            #ind_val_f = np.zeros(len(tY_f), dtype=bool)
-            #ind_val_f[choice_val_f] = True 
-            
-            #choice_hout_f = np.where(np.in1d(self.memory_disag[name][0],tregid_hout_c)[self.val_valid_ids[name]])[0] 
-            #ind_hout_f = np.zeros(len(tY_f), dtype=bool)
-            #ind_hout_f[choice_hout_f] = True 
-            
-            #ind_val_hout_f = np.zeros(len(tY_f), dtype=bool)
-            #ind_val_hout_f[choice_val_f] = True
-            #ind_val_hout_f[choice_hout_f] = True
-            #ind_train_f = ~ind_val_hout_f
-            """
-            if train_level[i]=='f':
-                tY, tregid, tMasks, tregMasks, tBBox = tY_f, tregid_f, tMasks_f, tregMasks_f, tBBox_f
-                ind_train = ind_train_f
-                # ind_val = ind_val_f
-            """
-            #elif train_level[i] in ['c','ac']:
             if train_level[i] in ['c','ac']:
                 tY, tregid, tMasks, tregMasks, tBBox = tY_c, tregid_c, tMasks_c, tregMasks_c, tBBox_c
                 ind_train = ind_train_c
@@ -637,73 +594,20 @@ class MultiPatchDataset(torch.utils.data.Dataset):
             tBBox = np.asarray(tBBox)
 
             # Prepare validation variables. Validation should be on the same level es training!! 
-            """
-            if train_level[i]=='f':
-                self.BBox_val[name] = tBBox_f[ind_val_f]
-                valid_val_boxes = (self.BBox_val[name][:,1]-self.BBox_val[name][:,0]) * (self.BBox_val[name][:,3]-self.BBox_val[name][:,2])>0
-                self.BBox_val[name] = self.BBox_val[name][valid_val_boxes]
-                self.Ys_val[name] =  tY_f[ind_val_f][valid_val_boxes] 
-                self.tregid_val[name] = tregid_f[ind_val_f][valid_val_boxes]
-                target_to_source_val = self.memory_disag[name][0].clone()
-                target_to_source_val[~np.in1d(self.memory_disag[name][0], tregid_val_c)] = 0
-                # coarse_regid_val = self.memory_disag[name][0][self.tregid_val[name]].unique(return_counts=True)[0] # consistency check: this should be the same as "tregid_val_c"
-                self.source_census_val[name] = { key: value for key,value in self.memory_disag[name][1].items() if key in tregid_val_c}
-                self.memory_disag_val[name] = target_to_source_val, self.source_census_val[name], self.memory_disag[name][2]
-                if self.tregid_val[name].__len__()>0:
-                    self.max_tregid_val[name] = np.max(self.tregid_val[name])
-                self.Masks_val[name] = tMasks_f[ind_val_f][valid_val_boxes]
-                self.regMasks_val[name] = tregMasks_f[ind_val_f][valid_val_boxes]
-                self.loc_list_val.extend( [(name, k) for k,_ in enumerate(self.BBox_val[name])])
-            """
-            #elif train_level[i] in ['c','ac']:
             if train_level[i] in ['c','ac']:
                 self.BBox_val[name] = tBBox_c[ind_val_c]
                 valid_val_boxes = (self.BBox_val[name][:,1]-self.BBox_val[name][:,0]) * (self.BBox_val[name][:,3]-self.BBox_val[name][:,2])>0
                 self.BBox_val[name] = self.BBox_val[name][valid_val_boxes]
                 self.Ys_val[name] =  tY_c[ind_val_c][valid_val_boxes] 
                 self.tregid_val[name] = tregid_c[ind_val_c][valid_val_boxes]
-                #target_to_source_val = torch.tensor(self.memory_disag[name][0]).clone()
-                #target_to_source_val = self.memory_disag[name][0].clone()
-                #target_to_source_val[~np.in1d(self.memory_disag[name][0], tregid_val_c)] = 0
-                # coarse_regid_val = self.memory_disag[name][0][self.tregid_val[name]].unique(return_counts=True)[0] # consistency check: this should be the same as "tregid_val_c"
-                #self.source_census_val[name] = { key: value for key,value in self.memory_disag[name][1].items() if key in tregid_val_c}
-                #self.memory_disag_val[name] = target_to_source_val, self.source_census_val[name], self.memory_disag[name][2]
+                
                 if self.tregid_val[name].__len__()>0:
                     self.max_tregid_val[name] = np.max(self.tregid_val[name])
                 self.Masks_val[name] = tMasks_c[ind_val_c][valid_val_boxes]
                 self.regMasks_val[name] = tregMasks_c[ind_val_c][valid_val_boxes]
                 self.loc_list_val.extend( [(name, k) for k,_ in enumerate(self.BBox_val[name])])
             
-            # Prepare the holdout (test) variables #TODO: refactor val and hout variables computation
-            """
-            self.BBox_hout[name] = tBBox_f[ind_hout_f]
-            valid_hout_boxes = (self.BBox_hout[name][:,1]-self.BBox_hout[name][:,0]) * (self.BBox_hout[name][:,3]-self.BBox_hout[name][:,2])>0
-            self.BBox_hout[name] = self.BBox_hout[name][valid_hout_boxes]
-            self.Ys_hout[name] =  tY_f[ind_hout_f][valid_hout_boxes] 
-            self.tregid_hout[name] = tregid_f[ind_hout_f][valid_hout_boxes]
-            target_to_source_hout = self.memory_disag[name][0].clone()
-            target_to_source_hout[~np.in1d(self.memory_disag[name][0], tregid_hout_c)] = 0
-            # coarse_regid_hout = self.memory_disag[name][0][self.tregid_hout[name]].unique(return_counts=True)[0] # consistency check: this should be the same as "tregid_hout_c"
-            self.source_census_hout[name] = { key: value for key,value in self.memory_disag[name][1].items() if key in tregid_hout_c}
-            self.memory_disag_hout[name] = target_to_source_hout, self.source_census_hout[name], self.memory_disag[name][2]
-            if self.tregid_hout[name].__len__()>0:
-                self.max_tregid_hout[name] = np.max(self.tregid_hout[name])
-            self.Masks_hout[name] = tMasks_f[ind_hout_f][valid_hout_boxes]
-            self.regMasks_hout[name] = tregMasks_f[ind_hout_f][valid_hout_boxes]
-            self.loc_list_hout.extend( [(name, k) for k,_ in enumerate(self.BBox_hout[name])])
-            """
-
-            # Prepare the training variables
-            # if train_level[i]=='ac':
-            #     self.BBox_train[name] = tBBox
-            #     valid_train_boxes = (self.BBox_train[name][:,1]-self.BBox_train[name][:,0]) * (self.BBox_train[name][:,3]-self.BBox_train[name][:,2])>0
-            #     self.BBox_train[name] = self.BBox_train[name][valid_train_boxes] 
-            #     self.Ys_train[name] =  tY[valid_train_boxes]
-            #     self.Masks_train[name] = tMasks[valid_train_boxes]
-            #     self.regMasks_train[name] = tregMasks[valid_train_boxes]
-            #     if name in train_dataset_name:
-            #         self.loc_list_train.extend( [(name, k) for k,_ in enumerate(self.BBox_train[name])])
-            # else:
+            
             self.BBox_train[name] = tBBox[ind_train]
             valid_train_boxes = (self.BBox_train[name][:,1]-self.BBox_train[name][:,0]) * (self.BBox_train[name][:,3]-self.BBox_train[name][:,2])>0
             self.BBox_train[name] = self.BBox_train[name][valid_train_boxes] 
@@ -713,18 +617,6 @@ class MultiPatchDataset(torch.utils.data.Dataset):
             if name in train_dataset_name:
                 self.loc_list_train.extend( [(name, k) for k,_ in enumerate(self.BBox_train[name])])
 
-            # Prepare the complete variables, we only use the finest level for this
-            """
-            self.BBox[name] = tBBox_f
-            valid_boxes = (self.BBox[name][:,1]-self.BBox[name][:,0]) * (self.BBox[name][:,3]-self.BBox[name][:,2])>0
-            self.BBox[name] = self.BBox[name][valid_boxes] 
-            self.Ys[name] =  tY_f[valid_boxes]
-            self.tregid[name] = tregid_f[valid_boxes]
-            self.max_tregid[name] = np.max(self.tregid[name])
-            self.Masks[name] = tMasks_f[valid_boxes]
-            self.regMasks[name] = tregMasks_f[valid_boxes]
-            self.loc_list.extend( [(name, k) for k,_ in enumerate(self.BBox[name])])
-            """
             # Prepare the complete variables, we new use coarse level for this
             self.BBox[name] = tBBox_c
             valid_boxes = (self.BBox[name][:,1]-self.BBox[name][:,0]) * (self.BBox[name][:,3]-self.BBox[name][:,2])>0
@@ -762,11 +654,6 @@ class MultiPatchDataset(torch.utils.data.Dataset):
             pairs = pairs[np.asarray(sumpixels_pairs12)<max_pix_forward**2]
             sumpixels_pairs12 = sumpixels_pairs12[np.asarray(sumpixels_pairs12)<max_pix_forward**2]
             self.small_pairs = pairs[np.asarray(sumpixels_pairs12)>0]
-
-            # triplets = [[indicies[i],indicies[j],indicies[k]] for i in tqdm(range(num_single)) for j in range(i+1, num_single) for k in range(j+1, num_single)]
-            # triplets = np.asarray(triplets, dtype=object)
-            # sumpixels_triplets = [(patchsize[id1]+patchsize[id2]+patchsize[id3]) for id1,id2,id3 in triplets ]
-            # self.small_triplets = triplets[np.asarray(sumpixels_triplets)<max_pix_forward**2]
 
             # prepare the weights
             self.all_sample_ids = list(self.small_pairs) #+ list(self.small_triplets)

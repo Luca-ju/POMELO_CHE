@@ -9,6 +9,8 @@ outputs/
 datasets/
 datasets2/
 datasets3/
+datasets_final/
+datasets_final2/
 .gitcopy/
 .gitcopy2/
 __pycache__/

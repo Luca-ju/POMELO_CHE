@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch
 from torch.nn.modules.container import Sequential
 from tqdm import tqdm
-from utils import plot_2dmatrix
+from utils_copy_Luca import plot_2dmatrix
 
 class PixTransformNet(nn.Module):
 
@@ -101,7 +101,7 @@ class PixScaleNet(nn.Module):
 
     def __init__(self, channels_in=5, kernel_size=1, weights_regularizer=0.001,
         device="cuda" if torch.cuda.is_available() else "cpu", loss=None, dropout=0.,
-        exp_max_clamp=20, pred_var = True, input_scaling=True, output_scaling=False, datanames=None, small_net=False, pop_target=False): ### input scaling auf true gesetzt.
+        exp_max_clamp=20, pred_var = True, input_scaling=False, output_scaling=False, datanames=None, small_net=False, pop_target=False): ### input scaling auf true gesetzt.
         super(PixScaleNet, self).__init__()
 
         self.pop_target = pop_target
@@ -123,6 +123,7 @@ class PixScaleNet(nn.Module):
         n1 = 128
         n2 = 128
         n3 = 128
+        
         ## diese parameter anpassen
 
         k1,k2,k3,k4 = kernel_size 
@@ -151,15 +152,16 @@ class PixScaleNet(nn.Module):
                 # self.out_scale[name].data.fill_(1.)
                 self.out_bias[name] =  torch.zeros( (1), requires_grad=True, device=device)
                 # self.out_bias[name].data.fill_(0.)
-                # self.params_with_regularizer += [{'params':self.out_scale[name],'weight_decay':weights_regularizer}]
+                #self.params_with_regularizer += [{'params':self.out_scale[name],'weight_decay':weights_regularizer}]
                 self.params_with_regularizer += [{'params':self.out_scale[name]}]
-                # self.params_with_regularizer += [{'params':self.out_bias[name],'weight_decay':weights_regularizer}]
+                
+                #self.params_with_regularizer += [{'params':self.out_bias[name],'weight_decay':weights_regularizer}]
                 self.params_with_regularizer += [{'params':self.out_bias[name]}]
             
         if dropout>0.0:
             if small_net:
                 self.occratenet = nn.Sequential(
-                            nn.Dropout(p=dropout, inplace=True),                        nn.Conv2d(self.channels_in, n1, (k1,k1), padding=(k1-1)//2),
+                            nn.Dropout(p=dropout, inplace=True), nn.Conv2d(self.channels_in, n1, (k1,k1), padding=(k1-1)//2),
                             nn.Dropout(p=dropout, inplace=True), nn.ReLU(inplace=True), nn.Conv2d(n1, n2, (k2,k2), padding=(k2-1)//2),
                             nn.Dropout(p=dropout, inplace=True), nn.ReLU(inplace=True), 
                             )
@@ -181,18 +183,11 @@ class PixScaleNet(nn.Module):
                                                   nn.Conv2d(self.channels_in, n1, (k1,k1), padding=(k1-1)//2),
                             nn.ReLU(inplace=True),nn.Conv2d(n1, n2, (k2,k2), padding=(k2-1)//2),
                             nn.ReLU(inplace=True),nn.Conv2d(n2, n3, (k3,k3), padding=(k3-1)//2),
-                            nn.ReLU(inplace=True),nn.Conv2d(n1, n3, (k1,k1), padding=(k1-1)//2), # ein layer mehr
+                            #nn.ReLU(inplace=True),nn.Conv2d(n3, n4, (k4,k4), padding=(k1-1)//2), # ein layer mehr
                             )
 
-            """
-                            (nn.Conv2d(self.channels_in, n1, (k1,k1), padding=(k1-1)//2),
-                            nn.ReLU(inplace=True),nn.Conv2d(n1, n2, (k2,k2), padding=(k2-1)//2),
-                            nn.ReLU(inplace=True),nn.Conv2d(n2, n3, (k3,k3), padding=(k3-1)//2),   
-                            )
-
-            """
-        self.occrate_layer = nn.Sequential(nn.Conv2d(n3, 1, (k4, k4),padding=(k4-1)//2), nn.Softplus() )
-        self.occrate_var_layer = nn.Sequential( nn.Conv2d(n3, 1, (k4, k4),padding=(k4-1)//2), nn.Softplus() if pred_var else nn.Identity(inplace=True) )
+        self.occrate_layer = nn.Sequential(nn.Conv2d(n3, 1, (k4, k4),padding=(k4-1)//2), nn.Softplus() ) # changed to n4
+        self.occrate_var_layer = nn.Sequential( nn.Conv2d(n3, 1, (k4, k4),padding=(k4-1)//2), nn.Softplus() if pred_var else nn.Identity(inplace=True) ) # changed to n4
  
         self.params_with_regularizer += [{'params':self.occratenet.parameters(),'weight_decay':weights_regularizer}]
         self.params_with_regularizer += [{'params':self.occrate_layer.parameters(),'weight_decay':weights_regularizer}]
@@ -219,8 +214,6 @@ class PixScaleNet(nn.Module):
             if not self.convnet:
                 inputs = inputs[:,:,mask[0]].unsqueeze(3)
                 mask = mask[mask].unsqueeze(0).unsqueeze(2)
-            # inputs = inputs[:,:,mask[0]].unsqueeze(3)
-            # mask = mask[mask].unsqueeze(0).unsqueeze(2)
             mask = mask.cpu()
         
         # check inputs

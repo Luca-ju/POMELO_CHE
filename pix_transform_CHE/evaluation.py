@@ -19,6 +19,7 @@ import random
 from tqdm import tqdm
 import os
 import pdb
+from osgeo import gdal, osr
 
 from utils_copy_Luca import plot_2dmatrix, accumulate_values_by_region, compute_performance_metrics, bbox2, \
      PatchDataset, MultiPatchDataset, NormL1, LogL1, LogoutputL1, LogoutputL2, compute_performance_metrics_arrays
@@ -28,6 +29,7 @@ from cy_utils import compute_map_with_new_labels, compute_accumulated_values_by_
 from pix_transform_CHE.pix_transform_net import PixScaleNet
 import config_pop as cfg
 
+from coarse_census_CH_test import geo_metadata_new, map_valid_ids_new
 
 def disag_map(predicted_target_img, agg_preds_arr, disaggregation_data):
 
@@ -126,10 +128,12 @@ def disag_and_eval_map(predicted_target_img, agg_preds_arr, validation_regions, 
     return predicted_target_img_adjusted.cpu(), log_dict
     
 
-def eval_my_model(mynet, guide_img, valid_mask, validation_regions,
-    valid_validation_ids, num_validation_ids, validation_ids, validation_census,
+def eval_my_model(mynet, guide_img, #valid_mask, #validation_regions,
+    #valid_validation_ids, num_validation_ids, validation_ids, 
+    validation_census,
     dataset,
-    disaggregation_data=None, return_scale=False,
+    #disaggregation_data=None, 
+    return_scale=False,
     dataset_name="unspecifed_dataset",
     full_eval=False, silent_mode=True):
 
@@ -152,7 +156,9 @@ def eval_my_model(mynet, guide_img, valid_mask, validation_regions,
             )
             if return_scale:
                 predicted_target_img, scales = return_vals
-                # hier geotiff speicher, scales = occrate
+                
+                
+
                 res["scales"] = scales.squeeze()
             else:
                 predicted_target_img = return_vals
@@ -166,122 +172,27 @@ def eval_my_model(mynet, guide_img, valid_mask, validation_regions,
                     res["variances"] = predicted_target_img[0, 1]
                 predicted_target_img = predicted_target_img[0, 0]
             
+            # hier predicted_target_map zu TIFF Speichern
+
             # replace masked values with the mean value, this way the artefacts when upsampling are mitigated
-            predicted_target_img[~valid_mask] = 1e-16
+
+            # create a boolean mask where invalid values are set to True
+            valid_mask = map_valid_ids_new > 0
+            predicted_target_img[~valid_mask] = np.nan
+            #predicted_target_img[~valid_mask] = 1e-16
+            
+            # replace masked values with the mean value, this way the artefacts when upsampling are mitigated
 
             res["predicted_target_img"] = predicted_target_img
-
-            # Aggregate by fine administrative boundary
-            agg_preds_arr = compute_accumulated_values_by_region(
-                validation_regions.numpy().astype(np.uint32),
-                predicted_target_img.cpu().numpy().astype(np.float32),
-                valid_validation_ids.numpy().astype(np.uint32),
-                num_validation_ids
-            )
-            agg_preds = {id: agg_preds_arr[id] for id in validation_ids}
-            metrics = compute_performance_metrics(agg_preds, validation_census) 
+           
             logging.info(f'Classic eval finished')
-
-            if disaggregation_data is not None:
-
-                logging.info(f'Classic disag started') 
-                predicted_target_img_adjusted, adj_logs = disag_and_eval_map(predicted_target_img, agg_preds_arr, validation_regions, valid_validation_ids,
-                    num_validation_ids, validation_ids, validation_census, disaggregation_data)
-                metrics.update(adj_logs)
-                logging.info(f'Classic disag finsihed')
-
-                res["predicted_target_img_adjusted"] = predicted_target_img_adjusted.cpu()  
-                predicted_target_img_adjusted = predicted_target_img_adjusted.cpu()
-                predicted_target_img = predicted_target_img.cpu()
-
+            
         else:
-            # Fast evaluation pipeline
-            logging.info(f'Samplewise eval started')
-            # agg_preds2 = {}
-            agg_preds_arr = torch.zeros((dataset.max_tregid[dataset_name]+1,))
-            for idx in tqdm(range(dataset.len_all_samples(dataset_name)), disable=silent_mode):
-                X, Y, Mask, name, census_id = dataset.get_single_item(idx, dataset_name) 
-                prediction = mynet.forward(X, Mask, name=name, forward_only=True).detach().cpu().numpy() ## predict_map = True, hinzugefügt
-
-                if isinstance(prediction, np.ndarray) and prediction.shape.__len__()==1:
-                    prediction = prediction[0]
-                # agg_preds2[census_id.item()] = prediction.item()
-                agg_preds_arr[census_id.item()] = prediction.item()
-                torch.cuda.empty_cache()
-
-            agg_preds3 = {id: agg_preds_arr[id].item() for id in validation_ids}
-
-            for cid in validation_census.keys():
-                if cid not in agg_preds3.keys():
-                    agg_preds3[cid] = 0
-
-            this_metrics = compute_performance_metrics(agg_preds3, validation_census)
-            metrics.update(this_metrics)
-            logging.info(f'Samplewise eval finished')
-
-            if disaggregation_data is not None: 
-                logging.info(f'Fast disag started') 
-
-                for cid in validation_regions.unique():
-                    if cid.item() not in agg_preds3.keys():
-                        agg_preds3[cid.item()] = 0
-
-                # Do the disagregation without the map
-                agg_preds_arr_adj, log_dict = disag_wo_map(agg_preds_arr, disaggregation_data)
-                for key,value in log_dict.items():
-                    metrics["adjusted/coarse/"+key] = value 
-                logging.info(f'Fast disag finished') 
-                agg_preds_adj = {id: agg_preds_arr_adj[id].item() for id in validation_ids}                
-                this_metrics = compute_performance_metrics(agg_preds_adj, validation_census)
-                for key,value in this_metrics.items():
-                    metrics["adjusted/coarse/"+key] = value  
-
-                # "fake" new dissagregation data and reuse the function
-                # Do the disagregation on country level 
-                disaggregation_data_coarsest = \
-                    [torch.zeros(disaggregation_data[0].shape, dtype=int), {0: sum(list(disaggregation_data[1].values()))}, disaggregation_data[2] ]
-              
-                agg_preds_arr_country_adj, log_dict = disag_wo_map(agg_preds_arr, disaggregation_data_coarsest)
-                for key,value in log_dict.items():
-                    metrics["adjusted/country/"+key] = value 
-                metrics["country/pred"] = agg_preds_arr.sum()
-                metrics["country/gt"] = disaggregation_data_coarsest[1][0]
-
-                # metrics.update(log_dict)
-                agg_preds_country_adj = {id: agg_preds_arr_country_adj[id].item() for id in validation_ids}                
-                this_metrics = compute_performance_metrics(agg_preds_country_adj, validation_census)
-                for key,value in this_metrics.items():
-                    metrics["adjusted/country/"+key] = value  
 
             logging.info(f'fast disag finished')
     
-    # if "in_scale" in dir(mynet):
-    #     if name in mynet.in_scale.keys():
-    #         in_scales = mynet.in_scale[name][0,:,0,0].detach().cpu().numpy()
-    #         in_biases = mynet.in_bias[name][0,:,0,0].detach().cpu().numpy() 
 
-    #     elif "mean_in_scale" in dir(mynet): 
-    #         in_scales = mynet.mean_in_scale[0,:,0,0].detach().cpu().numpy()
-    #         in_biases = mynet.mean_in_bias[0,:,0,0].detach().cpu().numpy()
-
-    #     for i,(sc,bi) in enumerate(zip(in_scales, in_biases)):
-    #         if mynet.pop_target:
-    #             fname = dataset.feature_names[name][i]
-    #         else:
-    #             fname = dataset.feature_names[name][i+1]
-    #         metrics["input_scaling/"+fname] = sc
-    #         metrics["input_bias/"+fname] = bi
-
-    # if "out_scale" in dir(mynet): 
-    #     if name in mynet.out_scale.keys():
-    #         metrics["output_scaling/output_scaling"] = mynet.out_scale[name].detach().cpu().numpy()
-    #         metrics["output_scaling/output_bias"] = mynet.out_bias[name].detach().cpu().numpy() 
-
-    #     elif "mean_out_scale" in dir(mynet): 
-    #         metrics["output_scaling/output_scaling"] = mynet.mean_out_scale.detach().cpu().numpy()
-    #         metrics["output_scaling/output_bias"] = mynet.mean_out_bias.detach().cpu().numpy()
-
-    return res, metrics
+    return res 
 
 def log_scales(mynet, datalocations, dataset, metrics):
     for name in datalocations:

@@ -13,6 +13,7 @@ from tqdm import tqdm as tqdm
 from pathlib import Path
 import random
 import config_pop as cfg
+import rioxarray as rxr
 
 
 import config_pop as cfg
@@ -33,88 +34,54 @@ def get_dataset(dataset_name, params, building_features, related_building_featur
 
     # configure pathscd /
     rst_wp_regions_path = cfg.metadata[dataset_name]["rst_wp_regions_path"] # admin regions vo wp
-    #preproc_data_path = cfg.metadata[dataset_name]["preproc_data_path"] # bruchi ned für CH
 
     # Read input data
     input_paths = cfg.input_paths[dataset_name]
     no_data_values = cfg.no_data_values[dataset_name]
 
-    ### fine regions erstmal nicht berücksichtigen 
-    #with open(preproc_data_path, 'rb') as handle: ## bruchi ned
-    #    pdata = pickle.load(handle)
+    cr_census_arr = cr_census_arr_new 
 
-    cr_census_arr = cr_census_arr_new # hani im coarse_census_CHE.ipynb file
-    #valid_ids = valid_ids_new # erstmal für de coarse census
-    #no_valid_ids = pdata["no_valid_ids"]  # [0,1] , ohni humdata.org
     no_valid_ids = cfg.metadata[dataset_name]["wp_no_data"]
     print("no_valid_ids {}".format(no_valid_ids))
-    #id_to_cr_id = pdata["id_to_cr_id"] ## bruchi glaubs ned für coarse 
-    #fine_census = pdata["valid_census"] ## fine_census: pixelweiser fein census für schweiz als dict
+   
     num_coarse_regions = len(cr_census_arr)
     geo_metadata = geo_metadata_new ## meta daten eines schweizer tiff; hani
-    #areas = pdata["areas"] ## Anzahl Bevölkerung pro Pixel
-    #print(rst_wp_regions_path)
-    #fine_regions = gdal.Open(rst_wp_regions_path).ReadAsArray().astype(np.uint32) ## bruchi das ?
-    #wp_ids = list(np.unique(fine_regions)) # [0,1,...len(areas)] ## erst bei validierung
-    #fine_area = dict(zip(wp_ids, areas)) # zusammen gsetztzer dict aus allen Einträgen des fine census
-    #num_wp_ids = len(wp_ids) # len(areas); erst bei fine census
+
     features = read_input_raster_data_to_np(input_paths) ### Bildern , width, height; muss alles einheitlich sein
 
-    # Binary map representing a pixel belong to a region with valid id
-    #map_valid_ids = create_map_of_valid_ids(fine_regions, no_valid_ids) # sollte fkt; hani
     map_valid_ids = map_valid_ids_new
 
-    # Get map of coarse level regions
-    #cr_regions = compute_map_with_new_labels(fine_regions, id_to_cr_id, map_valid_ids) #; hani
     cr_regions = relabel_new
 
-    # Compute area of coarse regions
-    #cr_areas = compute_grouped_values(areas, valid_ids, id_to_cr_id) # TODO bruchi ned grad
-
-  
-    
-    #cr_census = {} # hani im coarse_census file ### isch en dict mit zugehörige ids vode bevölkerig
-    #for key in cr_areas.keys():
-    #    cr_census[key] = cr_census_arr[key]
     cr_census = cr_census_new
-    
-        
-    #cr_train_source_vars = ["features", "cr_census", "cr_regions", "cr_map", "cr_map_full", "guide_res", "valid_data_mask", "coarse", "feature_names"]
 
     # Reorganize features into one numpy array and handling of no-data mask
     feature_names = list(input_paths.keys())
-    # torch_feature_names = torch.tensor(list(input_paths.keys()))
-    
-    """ chani erstmal ned bruche
 
-    # Merging building features from google and maxar if both are available
-    if ('buildings_google' in feature_names) and ('buildings_maxar' in feature_names):
-        # Taking the max over both available features
+    
+    ##### COMMENT THIS OUT WHEN WORKING WITH ONE BUILDING DATASET #####
+    
+    # Merging building features from TLM and OSM if both are available
+
+    if ('buildings_count_2020_TLM' in feature_names) and ('buildings_count_2020_OSM' in feature_names):
+        # Taking the mean over both available features
         #  max operation for mean building areas
-        gidx = np.where([el=='buildings_google' for el in feature_names])
-        midx = np.where([el=='buildings_maxar' for el in feature_names])
+        gidx = np.where([el=='buildings_count_2020_OSM' for el in feature_names])
+        midx = np.where([el=='buildings_count_2020_TLM' for el in feature_names])
 
-        maxargs = np.argmax(np.concatenate([features[gidx,:,:,None], features[midx,:,:,None]], 4), 4).astype(bool).squeeze()
- 
-        features[gidx,maxargs] =  features[midx,maxargs]
-        feature_names[np.squeeze(gidx)] = 'buildings_merge' 
-        bkeepers = np.where([el!='buildings_maxar' for el in feature_names])
+        mean_values = np.mean(np.concatenate([features[gidx,:,:,None], features[midx,:,:,None]], 4), 4).squeeze()
+
+        mask = mean_values > 1  # Create a mask for mean values greater than 1
+        mean_values = np.ceil(mean_values) # round to next highest integer
+
+        features[gidx, mask] = mean_values[mask]  # Replace values in gidx with mean values where mask is True
+        feature_names[np.squeeze(gidx)] = 'buildings_merge'
+
+        bkeepers = np.where([el!='buildings_count_2020_TLM' for el in feature_names])
         features = features[bkeepers]
-        feature_names.remove('buildings_maxar') 
-
-        if ('buildings_google_mean_area' in feature_names) and ('buildings_maxar_mean_area' in feature_names): 
-            gaidx = np.where([el=='buildings_google_mean_area' for el in feature_names])
-            maidx = np.where([el=='buildings_maxar_mean_area' for el in feature_names])
-            
-            features[gaidx,maxargs] =  features[maidx, maxargs]
-            feature_names[np.squeeze(gaidx)] = 'buildings_merge_mean_area'
-            bmakeepers = np.where([el!='buildings_maxar_mean_area' for el in feature_names])
-            features = features[bmakeepers]
-            feature_names.remove('buildings_maxar_mean_area') 
-        
-    """
+        feature_names.remove('buildings_count_2020_TLM') 
     
- 
+    ############################# UNTIL HERE ################################
             
     # Assert that first input is a building variable
     assert(feature_names[0] in building_features)
@@ -142,7 +109,6 @@ def get_dataset(dataset_name, params, building_features, related_building_featur
     # features = torch.cat(features, 0)
     features = torch.from_numpy(features)
 
-    # this_mask = features[0]!=no_data_values[name]
     if params["Net"]=='ScaleNet':
         valid_data_mask *= features[0]>0
 
@@ -151,60 +117,30 @@ def get_dataset(dataset_name, params, building_features, related_building_featur
     # also account for the invalid map ids
     valid_data_mask *= map_valid_ids.astype(bool)
 
-    # Create dataformat with densities for administrative boundaries of level -1 and -2
-    # Fills in the densities per pixel
-    # distribute sourcemap and target map according to the building pixels! To do so, we need to calculate the number of builtup pixels per regions!
-    #fine_built_area = {}
     cr_built_area = {}
-    #for key in tqdm(fine_census.keys()):
-    #    fine_built_area[key] = valid_data_mask[fine_regions==key].sum()
+    
     for key in tqdm(cr_census.keys()):
         cr_built_area[key] = valid_data_mask[cr_regions==key].sum()
 
-    #fine_density_full, fine_map_full = calculate_densities(census=fine_census, area=fine_area, map=fine_regions)
-    #cr_density_full, cr_map_full = calculate_densities(census=cr_census, area=cr_areas, map=cr_regions)
-    #fine_density, fine_map = calculate_densities(census=fine_census, area=fine_built_area, map=fine_regions)
-    #cr_density, cr_map = calculate_densities(census=cr_census, area=cr_built_area, map=cr_regions) 
     replacement = 0
 
-    # replace -inf with 1e-16 ("-16" on log scale) is close enough to zero for the log scale, otherwise take 0
-    #np.nan_to_num(fine_map, copy=False, neginf=replacement)
-    #np.nan_to_num(cr_map, copy=False, neginf=replacement)
-
-    #cr_map = torch.from_numpy(cr_map)
-    #fine_map = torch.from_numpy(fine_map).float()
     valid_data_mask =  valid_data_mask.to(torch.bool)
-    #fine_regions = torch.from_numpy(fine_regions.astype(np.int16))
     map_valid_ids = torch.from_numpy(map_valid_ids.astype(np.bool8))
-    #id_to_cr_id = torch.from_numpy(id_to_cr_id.astype(np.int32))
     cr_regions = torch.from_numpy(cr_regions.astype(np.int32)) 
 
     # replacements of invalid values
-    #features[:,~valid_data_mask] = replacement
-    #fine_map[~valid_data_mask] = replacement
-    #cr_map[~valid_data_mask] = replacement
-    #cr_map[~valid_data_mask] = 1e-10 # TODO: verify this operation!
+    features[:,~valid_data_mask] = replacement
 
     dataset = {
         "features": features,
         "feature_names":feature_names,
-        #"cr_map": cr_map,
-        #"cr_map_full": cr_map_full,
-        #"fine_map": fine_map,
-        #"fine_map_full": fine_map_full,
         "valid_data_mask": valid_data_mask,
-        #"fine_regions": fine_regions,
         "map_valid_ids": map_valid_ids,
-        #"id_to_cr_id": id_to_cr_id,
         "cr_regions": cr_regions,
         "cr_census": cr_census,
-        #"fine_census": fine_census,
-        #"valid_ids": valid_ids,
         "guide_res": guide_res,
         "geo_metadata": geo_metadata,
-        # "mean_std": (fmean, fstd),
         "num_valid_pix": valid_data_mask.sum(),
-        #"fine": "fine",
         "coarse": "coarse",
     }
     
@@ -220,7 +156,6 @@ def prep_train_hdf5_file(training_source, h5_filename, var_filename, silent_mode
     # Iterate throuh the image an cut out examples
     tX,tY,tregid,tMasks,tregMasks,tBBox = [],[],[],[],[],[]
 
-    #tr_features, tr_census, tr_regions, _, _, tr_guide_res, tr_valid_data_mask, level, feature_names = training_source
     tr_features, tr_census, tr_regions, tr_guide_res, tr_valid_data_mask, level, feature_names = training_source
     
     tr_regions = tr_regions.to(device)
@@ -258,8 +193,7 @@ def prep_train_hdf5_file(training_source, h5_filename, var_filename, silent_mode
 
 def prep_test_hdf5_file(validation_data, this_disaggregation_data, h5_filename,  var_filename, disag_filename):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    #val_features, val_census, val_regions, val_map, val_map_full, val_valid_ids, val_map_valid_ids, val_guide_res, val_valid_data_mask, geo_metadata, #cr_map, cr_map_full = validation_data
-    val_features, val_census, val_regions, val_map_valid_ids, val_guide_res, val_valid_data_mask, geo_metadata, val_feature_names  =  validation_data
+    val_features, val_census, val_regions, val_map_valid_ids, val_guide_res, val_valid_data_mask, geo_metadata =  validation_data
 
     dim, h, w = val_features.shape
 
@@ -271,10 +205,9 @@ def prep_test_hdf5_file(validation_data, this_disaggregation_data, h5_filename, 
             
     with open(var_filename, 'wb') as handle:
         pickle.dump(
-            [val_census, val_regions, #val_valid_ids,#val_map,# val_map_full, 
+            [val_census, val_regions,
             val_map_valid_ids, val_guide_res, val_valid_data_mask,
             geo_metadata],
-            #geo_metadata, cr_map, cr_map_full], 
             handle, protocol=pickle.HIGHEST_PROTOCOL)
     
     with open(disag_filename, 'wb') as handle:
@@ -384,18 +317,18 @@ def superpixel_with_pix_data(
             'full_ceval': full_ceval,
             'remove_feat_idxs' : remove_feat_idxs
             }
-    #building_features = ['buildings', 'buildings_j', 'buildings_google', 'buildings_maxar', 'buildings_merge']
-    building_features = ['buildings_merged'] # für die Schweiz
-    #related_building_features = ['buildings_google_mean_area', 'buildings_maxar_mean_area', 'buildings_merge_mean_area']
+   
+    #building_features = ['buildings_merged', 'buildings_osm', 'buildings_merge'] # für die Schweiz
+    building_features = ['buildings_count_2020_OSM', 'buildings_count_2020_TLM', 'buildings_merge']
+    #building_features = ['buildings_count_2020_OSM']
+    #building_features = ['buildings_count_2020_TLM']
+
     related_building_features = []
-    #fine_train_source_vars = ["features", "fine_census", "fine_regions", "fine_map", "fine_map_full", "guide_res", "valid_data_mask", "fine", "feature_names"]
+    
     cr_train_source_vars = ["features", "cr_census", "cr_regions", "guide_res", "valid_data_mask", "coarse", "feature_names"]
-    #cr_train_source_vars = ["features", "cr_census", "cr_regions", "cr_map", "cr_map_full", "guide_res", "valid_data_mask", "coarse", "feature_names"]
-    #fine_val_data_vars = ["features", "fine_census", "fine_regions", "fine_map", "fine_map_full", "valid_ids", "map_valid_ids", "guide_res",
-    #                        "valid_data_mask", "geo_metadata", "cr_map", "cr_map_full"]
+    
     fine_val_data_vars = ["features", "cr_census", "cr_regions",  "map_valid_ids", "guide_res",
-                            "valid_data_mask", "geo_metadata", "feature_names"]
-    #cr_disaggregation_data_vars = ["id_to_cr_id", "cr_census", "cr_regions"]
+                            "valid_data_mask", "geo_metadata"] #, "feature_names"]
     cr_disaggregation_data_vars = ["cr_census", "cr_regions"]
 
     wandb.init(project="HAC", entity=wandb_user, config=params, name=params["name"])
@@ -438,7 +371,6 @@ def superpixel_with_pix_data(
             Path(parent_dir).mkdir(parents=True, exist_ok=True)
 
             this_dataset = get_dataset(ds, params, building_features, related_building_features) 
-            #prep_train_hdf5_file(build_variable_list(this_dataset, fine_train_source_vars), h5_filename, train_var_filename_f, silent_mode=silent_mode)
             prep_train_hdf5_file(build_variable_list(this_dataset, cr_train_source_vars), h5_filename, train_var_filename_c, silent_mode=silent_mode)
             
             # Build testdataset here to avoid dublicate executions later
@@ -449,15 +381,12 @@ def superpixel_with_pix_data(
             # Free up RAM
             del this_disaggregation_data, this_validation_data
             del this_dataset 
-
-        #datalocations[ds] = {"features": h5_filename, "train_vars_f": train_var_filename_f, "train_vars_c": train_var_filename_c,
-        #    "eval_vars": eval_var_filename, "disag": eval_disag_filename}
         
         datalocations[ds] = {"features": h5_filename, "train_vars_f": train_var_filename_f, "train_vars_c": train_var_filename_c,
             "eval_vars": eval_var_filename, "disag": eval_disag_filename}
 
     if eval_5fold is None and eval_model is None:
-        res, log_dict = PixAdminTransform(
+        res = PixAdminTransform(#log_dict = PixAdminTransform(
             datalocations=datalocations,
             train_dataset_name=train_dataset_name,
             test_dataset_names=test_dataset_name,
@@ -497,17 +426,13 @@ def superpixel_with_pix_data(
                 os.makedirs(dest_folder)
             print("dest_folder {}".format(dest_folder))
             
-            log_output_path = dest_folder+'/log_dict.pkl'.format(name)
-            with open(log_output_path, 'wb') as handle:
-                pickle.dump(log_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            
-            with open(datalocations[name]['eval_vars'], "rb") as f:
-                #_, _, fine_map, fine_map_full, _, _, _, valid_data_mask, geo_metadata, cr_map, cr_map_full = pickle.load(f) 
-                valid_data_mask, geo_metadata = pickle.load(f) 
+            geo_metadata = geo_metadata_new
 
 
             predicted_target_img = res[name+'/predicted_target_img']
-            predicted_target_img_adjusted = res[name+'/predicted_target_img_adjusted']
+            #predicted_target_img_adjusted = res[name+'/predicted_target_img_adjusted']
+            valid_data_mask = map_valid_ids_new > 0
+            predicted_target_img[~valid_data_mask] = 1e-16
             scales = res[name+'/scales']
 
             if name+'/variances' in list(res.keys()):
@@ -517,33 +442,14 @@ def superpixel_with_pix_data(
             scale_vars_available = False
             if scales.shape.__len__()==3:
                 scale_vars = scales[1]
-                #scale_vars[~valid_data_mask]= np.nan
+                scale_vars[~valid_data_mask]= np.nan
                 scales = scales[0]
                 scale_vars_available = True
 
-            # cr_map[~valid_data_mask]= torch.tensor([np.nan], type=torch.float)
-            # cr_map = cr_map.numpy()
-            #cr_map[~valid_data_mask]= np.nan
-            predicted_target_img[~valid_data_mask]= np.nan
-            predicted_target_img_adjusted[~valid_data_mask]= np.nan
-            # scales[~valid_data_mask]= np.nan
-            #fine_map[~valid_data_mask]= np.nan
-            #fine_map_full[fine_map_full==0]= np.nan
-            #cr_map_full[cr_map_full==0]= np.nan
-            
-            #write_geolocated_image( cr_map_full, dest_folder+'/{}_cr_map_full.tiff'.format(name),
-            #    geo_metadata["geo_transform"], geo_metadata["projection"] )
-            #write_geolocated_image( cr_map.numpy(), dest_folder+'/{}_cr_map.tiff'.format(name),
-             #   geo_metadata["geo_transform"], geo_metadata["projection"] )
-            write_geolocated_image( predicted_target_img.numpy(), dest_folder+'/{}_predicted_target_img.tiff'.format(name),
+            write_geolocated_image(predicted_target_img.numpy(), dest_folder+'/{}_predicted_target_img.tiff'.format(name),
                 geo_metadata["geo_transform"], geo_metadata["projection"] )
-            write_geolocated_image( predicted_target_img_adjusted.numpy(), dest_folder+'/{}_predicted_target_img_adjusted.tiff'.format(name),
-                geo_metadata["geo_transform"], geo_metadata["projection"] )
-            #write_geolocated_image( fine_map_full, dest_folder+'/{}_fine_map_full.tiff'.format(name),
-            #    geo_metadata["geo_transform"], geo_metadata["projection"] )
-            #write_geolocated_image( fine_map.numpy(), dest_folder+'/{}_fine_map.tiff'.format(name),
-            #    geo_metadata["geo_transform"], geo_metadata["projection"] )
-            write_geolocated_image( scales.numpy(), dest_folder+'/{}_scales.tiff'.format(name),
+           
+            write_geolocated_image(scales.numpy(), dest_folder+'/{}_scales.tiff'.format(name),
                 geo_metadata["geo_transform"], geo_metadata["projection"] )
 
             if name+'/variances' in list(res.keys()):
@@ -593,7 +499,7 @@ def main():
 
     parser.add_argument("--optimizer", "-optim", type=str, default="adam", help="adam, adamw ")
     parser.add_argument("--loss", "-l", type=str, default="NormL1", help="NormL1, NormL2, gaussNLL, laplaceNLL")
-    parser.add_argument("--train_weight", "-train_w", type=str,  default='1', help="ordered by --train_dataset_name weighting of the samples in the datasets (separated by commas) ")
+    parser.add_argument("--train_weight", "-train_w", type=str,  default='1', help="ordered by --train_dataset_name weighting of the samples in the datasets (separated by commas) ") # war auf 1
     parser.add_argument("--learning_rate", "-lr", type=float, default=0.00001, help=" ")
     parser.add_argument("--grad_clip", "-gc", type=float, default=10., help="Gradient norm clipping value")
     parser.add_argument("--lr_scheduler_step", "-lrs", type=float, default=np.inf, help="How many interations until LR is reduced to 10%.")
@@ -617,8 +523,8 @@ def main():
     parser.add_argument("--load_state", "-load", type=str, default=None, help="Loading from a specific state. Attention: 5fold evaluation not implmented yet!")
     parser.add_argument("--eval_only", "-eval", type=bool, default=False, help="Just evaluate the model and save results. Attention: 5fold evaluation not implmented yet! ")
 
-    parser.add_argument("--input_scaling", "-is", type=bool, default=False, help="Countrywise input feature scaling.")
-    parser.add_argument("--output_scaling", "-os", type=bool, default=False, help="Countrywise output scaling.")
+    parser.add_argument("--input_scaling", "-is", type=bool, default=False, help="Countrywise input feature scaling.") 
+    parser.add_argument("--output_scaling", "-os", type=bool, default=False, help="Countrywise output scaling.") 
 
     parser.add_argument("--silent_mode", "-silent", type=bool, default=False, help="Surpresses tqdm output mostly")
     parser.add_argument("--dataset_dir", "-dd", type=str, default='datasets', help="Directory of the hdf5 files")
@@ -627,9 +533,9 @@ def main():
     
     parser.add_argument("--admin_augment", "-adm_aug", type=lambda x: bool(strtobool(x)), default=True, help="Use data augmentation by merging administrative regions")
     
-    parser.add_argument("--population_target", "-pop_target", type=lambda x: bool(strtobool(x)), default=False, help="Use population as target")
+    parser.add_argument("--population_target", "-pop_target", type=lambda x: bool(strtobool(x)), default=False, help="Use population as target") 
     
-    parser.add_argument("--num_epochs", "-ep", type=int, default=2000, help="Number of epochs")
+    parser.add_argument("--num_epochs", "-ep", type=int, default=2000, help="Number of epochs") # changed this
     
     parser.add_argument("--wandb_user", "-wandbu", type=str, default="lucadominiak", help="Wandb username")
     parser.add_argument("--name", type=str, default=None, help="short name for the run to identify it")
